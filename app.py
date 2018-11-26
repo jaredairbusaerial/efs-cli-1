@@ -5,6 +5,7 @@ import pandas as pd
 import click
 from arcgis.features import FeatureLayerCollection
 from tqdm import tqdm
+from pyproj import Proj, transform
 
 @click.command()
 @click.argument('fs_url')
@@ -18,16 +19,26 @@ def cli(fs_url,output,waittime):
     fl = flc.layers[0]
     rs = fl.query(where='1=1')
     writer = csv.writer(output, lineterminator='\n')
-    writer.writerow(['id','damage','structuretype','Y','X','weburl'])
+    writer.writerow(['Damage','Structure Type','Lat','Lon','Photol','Photo2','Photo3'])
     for feature in tqdm(rs.features):
         aId = None
         aUrl = None
         objId = feature.attributes['OBJECTID']
         attachs = fl.attachments.get_list(objId)
+        aUrl1 = "None"
+        aUrl2 = "None"
+        aUrl3 = "None"
         if (len(attachs) > 0):
             aId = attachs[0]['id']
-            aUrl = fs_url + '/0/' + str(objId) + '/attachments/' + str(aId)
-        tup =feature.attributes['OBJECTID'],feature.attributes['DAMAGE'],feature.attributes['STRUCTURETYPE'],feature.geometry['y'],feature.geometry['x'],aUrl
+            aUrl1 = fs_url + '/0/' + str(objId) + '/attachments/' + str(aId)
+        if (len(attachs) > 1):
+            aId = attachs[1]['id']
+            aUrl2 = fs_url + '/0/' + str(objId) + '/attachments/' + str(aId)
+        if (len(attachs) > 2):
+            aId = attachs[2]['id']
+            aUrl3 = fs_url + '/0/' + str(objId) + '/attachments/' + str(aId)
+        lon,lat = transform(Proj(init='epsg:3857'), Proj(init='epsg:4326'), feature.geometry['x'], feature.geometry['y'])
+        tup =feature.attributes['DAMAGE'],feature.attributes['STRUCTURETYPE'],lat,lon,aUrl1,aUrl2,aUrl3
         if (waittime > 0):
             time.sleep(waittime)
         writer.writerow(tup)
