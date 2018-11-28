@@ -17,28 +17,35 @@ def cli(fs_url,output,waittime):
   # fs_url = 'https://services1.arcgis.com/jUJYIo9tSA7EHvfZ/ArcGIS/rest/services/Camp2018_DINS_Public_View_Pictures/FeatureServer'
     flc = FeatureLayerCollection(fs_url)
     fl = flc.layers[0]
+    hasAttachments = fl.properties['hasAttachments']
     rs = fl.query(where='1=1')
     writer = csv.writer(output, lineterminator='\n')
-    writer.writerow(['Damage','Structure Type','Lat','Lon','Photol','Photo2','Photo3'])
+    if (hasAttachments):
+        writer.writerow(['Damage','Structure Type','Lat','Lon','Photo1','Photo2','Photo3'])
+    else:
+        writer.writerow(['Damage','Structure Type','Lat','Lon'])
     for feature in tqdm(rs.features):
         aId = None
         aUrl = None
         objId = feature.attributes['OBJECTID']
-        attachs = fl.attachments.get_list(objId)
-        aUrl1 = "None"
-        aUrl2 = "None"
-        aUrl3 = "None"
-        if (len(attachs) > 0):
-            aId = attachs[0]['id']
-            aUrl1 = fs_url + '/0/' + str(objId) + '/attachments/' + str(aId)
-        if (len(attachs) > 1):
-            aId = attachs[1]['id']
-            aUrl2 = fs_url + '/0/' + str(objId) + '/attachments/' + str(aId)
-        if (len(attachs) > 2):
-            aId = attachs[2]['id']
-            aUrl3 = fs_url + '/0/' + str(objId) + '/attachments/' + str(aId)
         lon,lat = transform(Proj(init='epsg:3857'), Proj(init='epsg:4326'), feature.geometry['x'], feature.geometry['y'])
-        tup =feature.attributes['DAMAGE'],feature.attributes['STRUCTURETYPE'],lat,lon,aUrl1,aUrl2,aUrl3
+        if (hasAttachments):
+            attachs = fl.attachments.get_list(objId)
+            aUrl1 = "None"
+            aUrl2 = "None"
+            aUrl3 = "None"
+            if (len(attachs) > 0):
+                aId = attachs[0]['id']
+                aUrl1 = fs_url + '/0/' + str(objId) + '/attachments/' + str(aId)
+            if (len(attachs) > 1):
+                aId = attachs[1]['id']
+                aUrl2 = fs_url + '/0/' + str(objId) + '/attachments/' + str(aId)
+            if (len(attachs) > 2):
+                aId = attachs[2]['id']
+                aUrl3 = fs_url + '/0/' + str(objId) + '/attachments/' + str(aId)
+            tup =feature.attributes['DAMAGE'],feature.attributes['STRUCTURETYPE'],lat,lon,aUrl1,aUrl2,aUrl3
+        else:
+            tup =feature.attributes['DAMAGE'],feature.attributes['STRUCTURETYPE'],lat,lon
         if (waittime > 0):
             time.sleep(waittime)
         writer.writerow(tup)
